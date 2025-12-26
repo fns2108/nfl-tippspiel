@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <h1 class="text-3xl font-bold text-gray-800">Season Stats: {{ selected_player }}</h1>
+    
+    <form method="GET" action="/season-stats" class="flex items-center space-x-2">
+        <label for="player" class="text-sm font-bold text-gray-600">View Player:</label>
+        <select name="player" id="player" onchange="this.form.submit()" class="border rounded px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {% for player in all_players %}
+                <option value="{{ player }}" {% if player == selected_player %}selected{% endif %}>{{ player }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6 border-t-4 border-blue-500">
+        <h3 class="text-gray-500 text-sm uppercase font-bold mb-2">Total Picks Made</h3>
+        <p class="text-4xl font-bold text-gray-800">{{ total_picks }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-t-4 border-green-500">
+        <h3 class="text-gray-500 text-sm uppercase font-bold mb-2">Overall Win Rate</h3>
+        <p class="text-4xl font-bold text-gray-800">{{ win_rate }}%</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-t-4 border-purple-500">
+        <h3 class="text-gray-500 text-sm uppercase font-bold mb-2">Favorite Team to Pick</h3>
+        <p class="text-xl font-bold text-gray-800">{{ fav_team }}</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-gray-800 text-white px-6 py-4">
+        <h2 class="text-xl font-bold">Team Breakdown for {{ selected_player }}</h2>
+        <p class="text-sm opacity-75">Analysis of every pick made this season.</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                    <th class="py-3 px-6">Team</th>
+                    <th class="py-3 px-6 text-center">Times Picked</th>
+                    <th class="py-3 px-6 text-center">Wins When Picked</th>
+                    <th class="py-3 px-6 text-center">Success %</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm">
+                {% if not team_stats %}
+                <tr>
+                    <td colspan="4" class="py-8 text-center text-gray-400 italic">No picks found for this player yet.</td>
+                </tr>
+                {% endif %}
+                {% for team_id, stats in team_stats.items() %}
+                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="py-3 px-6 flex items-center">
+                        <img src="{{ stats.logo }}" class="w-8 h-8 mr-3 object-contain">
+                        <span class="font-bold">{{ stats.name }}</span>
+                    </td>
+                    <td class="py-3 px-6 text-center">{{ stats.times_picked }}</td>
+                    <td class="py-3 px-6 text-center">{{ stats.wins }}</td>
+                    <td class="py-3 px-6 text-center">
+                        {% set pct = (stats.wins / stats.times_picked * 100)|round(1) %}
+                        <span class="{% if pct > 50 %}text-green-600{% elif pct < 50 %}text-red-600{% endif %} font-bold">
+                            {{ pct }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

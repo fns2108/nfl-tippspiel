@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NFL Picks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <i class="fas fa-football-ball text-yellow-500 text-5xl mb-4"></i>
+            <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tighter">NFL<span class="text-yellow-500">PICKS</span></h1>
+            <p id="login-subtext" class="text-gray-500 text-sm mt-2 font-medium">Enter your username to begin</p>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 mb-4 text-sm" role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form id="login-form" action="/login" method="POST" class="space-y-4">
+            <!-- Step 1: Username -->
+            <div id="username-step">
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Username</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-user"></i>
+                    </span>
+                    <input type="text" id="username-input" name="username" required placeholder="Enter username..." 
+                           class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                </div>
+                <button type="button" id="next-btn" class="w-full mt-4 bg-gray-900 text-white font-bold py-3 rounded-lg hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg">
+                    Next
+                </button>
+            </div>
+
+            <!-- Step 2: Password (Hidden initially) -->
+            <div id="password-step" class="hidden animate-fade-in">
+                <div class="flex items-center justify-between mb-1">
+                    <label id="password-label" class="block text-xs font-bold text-gray-700 uppercase">Password</label>
+                    <button type="button" id="back-btn" class="text-[10px] text-blue-500 hover:underline">Change Username</button>
+                </div>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                    <input type="password" id="password-input" name="password" placeholder="Enter password..." 
+                           class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                </div>
+                <p id="password-hint" class="text-sm text-gray-600 mt-3 italic font-medium leading-relaxed"></p>
+                <button type="submit" class="w-full mt-4 bg-yellow-500 text-gray-900 font-bold py-3 rounded-lg hover:bg-yellow-600 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg">
+                    Enter League
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const usernameStep = document.getElementById('username-step');
+        const passwordStep = document.getElementById('password-step');
+        const usernameInput = document.getElementById('username-input');
+        const passwordInput = document.getElementById('password-input');
+        const nextBtn = document.getElementById('next-btn');
+        const backBtn = document.getElementById('back-btn');
+        const passwordLabel = document.getElementById('password-label');
+        const passwordHint = document.getElementById('password-hint');
+        const subtext = document.getElementById('login-subtext');
+
+        nextBtn.addEventListener('click', async () => {
+            const username = usernameInput.value.trim();
+            if (!username) return;
+
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+            try {
+                const response = await fetch('/check-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const data = await response.json();
+
+                usernameStep.classList.add('hidden');
+                passwordStep.classList.remove('hidden');
+                passwordInput.focus();
+
+                if (data.exists) {
+                    passwordLabel.innerText = "Enter Password";
+                    passwordHint.innerText = "Welcome back! Enter your password to sign in.";
+                    subtext.innerText = "Sign in to your account";
+                } else {
+                    passwordLabel.innerText = "Create Password";
+                    passwordHint.innerText = "This username is new. Choose a password to register.";
+                    subtext.innerText = "Create your new account";
+                }
+            } catch (error) {
+                console.error('Error checking user:', error);
+                alert('Connection error. Please try again.');
+            } finally {
+                nextBtn.disabled = false;
+                nextBtn.innerText = 'Next';
+            }
+        });
+
+        backBtn.addEventListener('click', () => {
+            passwordStep.classList.add('hidden');
+            usernameStep.classList.remove('hidden');
+            subtext.innerText = "Enter your username to begin";
+            passwordInput.value = '';
+        });
+
+        // Allow "Enter" key on username to trigger next
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                nextBtn.click();
+            }
+        });
+    </script>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">League Scoreboard</h1>
+    <p class="text-gray-600">Weekly performance and season standings.</p>
+</div>
+
+<!-- Weekly Side-by-Side Comparison -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+    <!-- Last Week -->
+    <div class="bg-white rounded-lg shadow overflow-hidden border-t-4 border-gray-400">
+        <div class="bg-gray-50 px-6 py-4 border-b">
+            <h2 class="text-lg font-bold text-gray-700">Week {{ last_week }} Results</h2>
+        </div>
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                    <th class="py-3 px-6">Player</th>
+                    <th class="py-3 px-6 text-center">Score</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm">
+                {% for player, score in weekly_results[last_week|string].items() %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-3 px-6 font-medium">{{ player }}</td>
+                    <td class="py-3 px-6 text-center font-bold text-blue-600">{{ score }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="2" class="py-6 text-center text-gray-400">No data for last week.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Current Week -->
+    <div class="bg-white rounded-lg shadow overflow-hidden border-t-4 border-blue-500">
+        <div class="bg-blue-50 px-6 py-4 border-b">
+            <h2 class="text-lg font-bold text-blue-800">Week {{ current_week }} Live</h2>
+        </div>
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                    <th class="py-3 px-6">Player</th>
+                    <th class="py-3 px-6 text-center">Score</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm">
+                {% for player, score in weekly_results[current_week|string].items() %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-3 px-6 font-medium">{{ player }}</td>
+                    <td class="py-3 px-6 text-center font-bold text-green-600">{{ score }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="2" class="py-6 text-center text-gray-400">No picks made for this week yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Season Standings Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden mb-12">
+    <div class="bg-gray-800 text-white px-6 py-4">
+        <h2 class="text-xl font-bold">Overall Season Standings</h2>
+    </div>
+    <table class="w-full text-left">
+        <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                <th class="py-3 px-6">Rank</th>
+                <th class="py-3 px-6">Player</th>
+                <th class="py-3 px-6 text-center">Weeks Played</th>
+                <th class="py-3 px-6 text-center">Total Correct</th>
+            </tr>
+        </thead>
+        <tbody class="text-gray-700">
+            {% for player, totals in season_totals.items() %}
+            <tr class="border-b hover:bg-gray-50 {% if player == session['user'] %}bg-yellow-50{% endif %}">
+                <td class="py-4 px-6 font-bold text-gray-400">#{{ loop.index }}</td>
+                <td class="py-4 px-6 font-bold text-lg">{{ player }}</td>
+                <td class="py-4 px-6 text-center">{{ totals['weeks_played'] }}</td>
+                <td class="py-4 px-6 text-center font-black text-xl text-green-600">{{ totals['correct'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Detailed Stats Section -->
+<hr class="my-12 border-gray-300">
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <h2 class="text-2xl font-bold text-gray-800">Detailed Analytics</h2>
+    
+    <form method="GET" action="/scoreboard" class="flex items-center space-x-2 bg-white p-2 rounded shadow-sm">
+        <label for="player" class="text-sm font-bold text-gray-600">View Stats For:</label>
+        <select name="player" id="player" onchange="this.form.submit()" class="border-none bg-transparent font-bold text-blue-600 focus:ring-0">
+            {% for player in all_players %}
+                <option value="{{ player }}" {% if player == selected_player %}selected{% endif %}>{{ player }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+        <h3 class="text-gray-500 text-xs uppercase font-bold mb-1">Total Picks ({{ selected_player }})</h3>
+        <p class="text-3xl font-bold text-gray-800">{{ total_picks }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+        <h3 class="text-gray-500 text-xs uppercase font-bold mb-1">Success Rate</h3>
+        <p class="text-3xl font-bold text-gray-800">{{ win_rate }}%</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+        <h3 class="text-gray-500 text-xs uppercase font-bold mb-1">Most Picked Team</h3>
+        <p class="text-xl font-bold text-gray-800">{{ fav_team }}</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-gray-100 text-gray-600 uppercase text-xs font-bold">
+                    <th class="py-3 px-6">Team</th>
+                    <th class="py-3 px-6 text-center">Times Picked</th>
+                    <th class="py-3 px-6 text-center">Successful Picks</th>
+                    <th class="py-3 px-6 text-center">Success %</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm">
+                {% for team_id, stats in team_stats.items() %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-3 px-6 flex items-center">
+                        <img src="{{ stats.logo }}" class="w-6 h-6 mr-3 object-contain" alt="">
+                        <span class="font-bold">{{ stats.name }}</span>
+                    </td>
+                    <td class="py-3 px-6 text-center">{{ stats.times_picked }}</td>
+                    <td class="py-3 px-6 text-center">{{ stats.wins }}</td>
+                    <td class="py-3 px-6 text-center">
+                        {% set pct = (stats.wins / stats.times_picked * 100)|round(1) %}
+                        {% if pct >= 75 %}
+                            {% set color_class = 'text-green-600' %}
+                        {% elif pct >= 50 %}
+                            {% set color_class = 'text-yellow-500' %}
+                        {% elif pct >= 25 %}
+                            {% set color_class = 'text-orange-500' %}
+                        {% else %}
+                            {% set color_class = 'text-red-600' %}
+                        {% endif %}
+                        <span class="{{ color_class }} font-bold">
+                            {{ pct }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="h-12"></div>
+{% endblock %}
