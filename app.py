@@ -34,7 +34,7 @@ def get_espn_schedule(week, year=None):
         if datetime.now().month < 3:
             year -= 1
             
-    url = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+    url = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
     params = {
         'week': week,
         'year': year,
@@ -42,18 +42,25 @@ def get_espn_schedule(week, year=None):
         'limit': 100
     }
     try:
-        r = requests.get(url, params=params)
+        # Increased timeout to 20 seconds for slower proxy connections
+        r = requests.get(url, params=params, timeout=20)
         r.raise_for_status()
-        return r.json()
+        data = r.json()
+        
+        # Ensure 'events' key exists even if no games are found
+        if 'events' not in data:
+            data['events'] = []
+        return data
     except Exception as e:
-        print(f"Error fetching ESPN data: {e}")
-        return {'events': []}
+        # Log error to PythonAnywhere error logs
+        print(f"CRITICAL: Error fetching ESPN data for week {week}: {e}")
+        return {'events': [], 'week': {'number': week}, 'error': True}
 
 def get_current_week():
     """Helper to find the current NFL week from ESPN."""
     try:
-        url = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
-        r = requests.get(url)
+        url = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+        r = requests.get(url, timeout=10)
         data = r.json()
         return data.get('week', {}).get('number', 1)
     except:
@@ -61,11 +68,12 @@ def get_current_week():
 
 def determine_winners(games):
     """Parses ESPN data to find winners of completed games."""
-    winners = {}  # game_id: team_id
+    winners = {}
     if not games or 'events' not in games: 
         return winners
         
     for event in games.get('events', []):
+        if not event.get('competitions'): continue
         competition = event['competitions'][0]
         if competition['status']['type']['completed']:
             for competitor in competition['competitors']:
@@ -86,7 +94,6 @@ def index():
 
 @app.route('/check-user', methods=['POST'])
 def check_user():
-    """AJAX endpoint to see if a username exists."""
     data = request.get_json()
     username = data.get('username', '').strip()
     if not username:
@@ -108,17 +115,15 @@ def login():
     users = load_json(USERS_FILE)
     
     if username not in users:
-        # Create new user
         users[username] = generate_password_hash(password)
         save_json(USERS_FILE, users)
         session['user'] = username
-        flash(f"Welcome to the league, {username}! Your account is created.")
+        flash(f"Welcome to the league, {username}!")
     else:
-        # Check existing user
         if check_password_hash(users[username], password):
             session['user'] = username
         else:
-            flash("Incorrect password. Please try again.")
+            flash("Incorrect password.")
             return redirect('/')
             
     return redirect('/')
@@ -143,6 +148,11 @@ def week_view(week):
         all_data[week_str][user] = {}
 
     schedule = get_espn_schedule(week)
+    
+    # If the API failed, notify the user instead of showing a blank page
+    if schedule.get('error'):
+        flash("Could not sync with NFL scores. Please refresh or try again in a moment.")
+
     now = datetime.now(timezone.utc)
 
     if request.method == 'POST':
@@ -151,7 +161,7 @@ def week_view(week):
             try:
                 start_time = datetime.strptime(event['date'], "%Y-%m-%dT%H:%MZ").replace(tzinfo=timezone.utc)
                 game_start_times[str(event['id'])] = start_time
-            except ValueError:
+            except:
                 continue
 
         saved_count = 0
@@ -165,12 +175,7 @@ def week_view(week):
                 blocked_count += 1
         
         save_json(PICKS_FILE, all_data)
-        
-        if blocked_count > 0:
-            flash(f"Saved {saved_count} picks. {blocked_count} games were already locked.")
-        else:
-            flash(f"Picks successfully saved for Week {week}!")
-            
+        flash(f"Saved {saved_count} picks.")
         return redirect(url_for('week_view', week=week))
 
     user_picks = all_data[week_str].get(user, {})
@@ -198,9 +203,6 @@ def scoreboard():
     season_totals = {}
     weekly_results = {str(current_week): {}, str(last_week): {}}
     
-    curr_winners = determine_winners(get_espn_schedule(current_week))
-    last_winners = determine_winners(get_espn_schedule(last_week))
-    
     team_stats = {}
     total_picks = 0
     total_wins = 0
@@ -211,6 +213,7 @@ def scoreboard():
         
         team_lookup = {}
         for event in schedule.get('events', []):
+            if not event.get('competitions'): continue
             for competitor in event['competitions'][0]['competitors']:
                 tid = competitor['team']['id']
                 team_lookup[tid] = {
@@ -245,8 +248,8 @@ def scoreboard():
 
     sorted_totals = dict(sorted(season_totals.items(), key=lambda item: item[1]['correct'], reverse=True))
     win_rate = round((total_wins / total_picks * 100), 1) if total_picks > 0 else 0
-    fav_team = max(team_stats, key=lambda x: team_stats[x]['times_picked'], default=None)
-    fav_team_name = team_stats[fav_team]['name'] if fav_team else "N/A"
+    fav_team_id = max(team_stats, key=lambda x: team_stats[x]['times_picked'], default=None)
+    fav_team_name = team_stats[fav_team_id]['name'] if fav_team_id else "N/A"
 
     return render_template('scoreboard.html', 
                            season_totals=sorted_totals, 
@@ -261,6 +264,4 @@ def scoreboard():
                            fav_team=fav_team_name)
 
 if __name__ == '__main__':
-    if not os.path.exists('templates'):
-        print("Warning: 'templates' folder not found.")
     app.run(debug=True, port=5000)
