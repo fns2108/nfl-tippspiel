@@ -17,37 +17,42 @@
         {% for event in schedule['events'] %}
             {% set comp = event['competitions'][0] %}
             {% set game_id = event['id'] %}
+            {# In ESPN API, competitors[0] is usually Home and [1] is Away #}
             {% set home = comp['competitors'][0] %}
             {% set away = comp['competitors'][1] %}
             {% set picked_id = user_picks.get(game_id) %}
             
             <div class="bg-white rounded-lg shadow p-4 team-card relative overflow-hidden matchup-card" data-game-id="{{ game_id }}">
                 <div class="text-xs text-center text-gray-500 mb-2 border-b pb-2">
-                    {{ event['date'] | replace('T', ' ') | replace('Z', '') }} UTC 
-                    <span class="ml-2 font-bold">{{ event['status']['type']['detail'] }}</span>
+                    <span class="font-bold uppercase">{{ event['status']['type']['detail'] }}</span>
                 </div>
 
                 <div class="flex justify-between items-center">
-                    <!-- Home Team -->
-                    <label class="team-label flex flex-col items-center cursor-pointer w-5/12 p-2 rounded transition-all {% if picked_id == home['team']['id'] %}bg-blue-100 ring-2 ring-blue-500{% else %}hover:bg-blue-50{% endif %}">
-                        <input type="radio" name="{{ game_id }}" value="{{ home['team']['id'] }}" class="hidden team-radio" {% if picked_id == home['team']['id'] %}checked{% endif %}>
-                        <img src="{{ home['team']['logo'] }}" class="nfl-logo mb-1" alt="{{ home['team']['displayName'] }}">
-                        <span class="font-bold text-center text-sm md:text-base">{{ home['team']['shortDisplayName'] }}</span>
-                        <span class="text-xs text-gray-500">{{ home.get('records', [{'summary': '0-0'}])[0]['summary'] }}</span>
-                        {% if home.get('winner') == True %}<span class="text-green-600 font-bold text-xs mt-1">WINNER</span>{% endif %}
-                        <div class="text-xl font-bold text-gray-800 mt-1">{{ home['score'] }}</div>
-                    </label>
-
-                    <div class="text-gray-400 font-bold text-xl">VS</div>
-
-                    <!-- Away Team -->
+                    <!-- Away Team (Left) -->
                     <label class="team-label flex flex-col items-center cursor-pointer w-5/12 p-2 rounded transition-all {% if picked_id == away['team']['id'] %}bg-blue-100 ring-2 ring-blue-500{% else %}hover:bg-blue-50{% endif %}">
                         <input type="radio" name="{{ game_id }}" value="{{ away['team']['id'] }}" class="hidden team-radio" {% if picked_id == away['team']['id'] %}checked{% endif %}>
                         <img src="{{ away['team']['logo'] }}" class="nfl-logo mb-1" alt="{{ away['team']['displayName'] }}">
                         <span class="font-bold text-center text-sm md:text-base">{{ away['team']['shortDisplayName'] }}</span>
                         <span class="text-xs text-gray-500">{{ away.get('records', [{'summary': '0-0'}])[0]['summary'] }}</span>
-                        {% if away.get('winner') == True %}<span class="text-green-600 font-bold text-xs mt-1">WINNER</span>{% endif %}
-                        <div class="text-xl font-bold text-gray-800 mt-1">{{ away['score'] }}</div>
+                        {% if away.get('winner') == True %}<span class="text-green-600 font-bold text-xs mt-1 italic uppercase">Winner</span>{% endif %}
+                    </label>
+
+                    <div class="flex flex-col items-center justify-center w-2/12">
+                        <div class="text-gray-400 font-bold text-xl leading-none mb-2">@</div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-lg font-black text-gray-800">{{ away['score'] }}</span>
+                            <span class="text-black-300 font-bold">:</span>
+                            <span class="text-lg font-black text-gray-800">{{ home['score'] }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Home Team (Right) -->
+                    <label class="team-label flex flex-col items-center cursor-pointer w-5/12 p-2 rounded transition-all {% if picked_id == home['team']['id'] %}bg-blue-100 ring-2 ring-blue-500{% else %}hover:bg-blue-50{% endif %}">
+                        <input type="radio" name="{{ game_id }}" value="{{ home['team']['id'] }}" class="hidden team-radio" {% if picked_id == home['team']['id'] %}checked{% endif %}>
+                        <img src="{{ home['team']['logo'] }}" class="nfl-logo mb-1" alt="{{ home['team']['displayName'] }}">
+                        <span class="font-bold text-center text-sm md:text-base">{{ home['team']['shortDisplayName'] }}</span>
+                        <span class="text-xs text-gray-500">{{ home.get('records', [{'summary': '0-0'}])[0]['summary'] }}</span>
+                        {% if home.get('winner') == True %}<span class="text-green-600 font-bold text-xs mt-1 italic uppercase">Winner</span>{% endif %}
                     </label>
                 </div>
             </div>
@@ -56,7 +61,7 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4 shadow-lg z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <span class="text-gray-600 hidden md:inline">Selection highlights instantly. Don't forget to save!</span>
+            <span class="text-gray-600 hidden md:inline">Don't forget to save!</span>
             <button type="submit" class="bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-700 transition transform hover:scale-105">
                 Save Picks for Week {{ week }}
             </button>
@@ -68,14 +73,11 @@
 <script>
     document.querySelectorAll('.team-radio').forEach(radio => {
         radio.addEventListener('change', function() {
-            // Find the parent matchup card
             const card = this.closest('.matchup-card');
-            // Remove highlighting from all labels in this card
             card.querySelectorAll('.team-label').forEach(label => {
                 label.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500');
                 label.classList.add('hover:bg-blue-50');
             });
-            // Add highlighting to the parent label of the checked radio
             const selectedLabel = this.closest('.team-label');
             selectedLabel.classList.add('bg-blue-100', 'ring-2', 'ring-blue-500');
             selectedLabel.classList.remove('hover:bg-blue-50');
